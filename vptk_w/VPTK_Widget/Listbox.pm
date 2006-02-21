@@ -10,7 +10,7 @@ sub PrintTitle    { 'Listbox' }
 sub AssociatedIcon{ 'listbox' }
 sub EditorProperties {
   return {
-    -background=>'color',-foreground=>'color',-borderwidth=>'int+',
+    -background=>'color',-foreground=>'color',-borderwidth=>'int+',-scrollbars=>'scrolled',
     -width=>'int+',-height=>'int+',-setgrid=>'menu(0|1)',-relief=>'relief',
     -selectmode=>'menu(single|browse|multiple|extended)'
   }

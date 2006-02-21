@@ -12,6 +12,7 @@ sub EditorProperties {
   return {
     -background=>'color',-foreground=>'color',-borderwidth=>'int+',
     -takefocus=>'menu(0|1)',-state=>'menu(normal|disabled)',
+    -relief=>'relief',-scrollbars=>'scrolled',
     -wrap=>'menu(none|char|word)',-setgrid=>'menu(0|1)',-width=>'int+',
     -height=>'int+',-padx=>'int+',-pady=>'int+'
   }

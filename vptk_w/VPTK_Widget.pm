@@ -15,6 +15,9 @@
 package vptk_w::VPTK_Widget;
 
 use strict;
+use Exporter 'import';
+our @EXPORT = qw(HaveGeometry WidgetIconName AllWidgetsNames EditorProperties DefaultParams HelpId);
+
 use vptk_w::VPTK_Geometry;
 my @widget_types;
 
@@ -36,7 +39,7 @@ BEGIN {
 }
 
 # Public methods wrapping derived classes implementation
-sub widget_types { return @widget_types }
+sub AllWidgetsNames { return @widget_types }
 
 # Constructor (non-virtual)
 # Automatically builds sub-class object with standard content
@@ -87,7 +90,21 @@ sub Draw {
   die "ERROR: missing or wrong arg(s) (@_)"
     unless ref $this && ref $parent;
   $this->{'-parent_object'} = $parent;
-  my $result=$this->JustDraw($parent,%{$this->InstanceData()->{'-widget_data'}});
+  my @args = %{$this->InstanceData()->{'-widget_data'}};
+  my $result;
+  my $scrolled = 0;
+  if(grep($_ eq '-scrolled',@args)) {
+    $scrolled = 1;
+    my %args = @args;
+    delete $args{'-scrolled'};
+    @args = %args;
+  }
+  if($scrolled) {
+    $result = $parent->Scrolled($this->PrintTitle()=>@args);
+  }
+  else {
+    $result=$this->JustDraw($parent,@args);
+  }
   if($this->HaveGeometry) {
     my $geometry = vptk_w::VPTK_Geometry->new( %{$this->InstanceData()->{'-geometry_data'}} );
     $geometry->ApplyGeometry($result);
@@ -98,10 +115,14 @@ sub Draw {
 
 sub DefaultParams    { &enquire_from_subclass('DefaultParams'   => @_) }
 sub HaveGeometry     { &enquire_from_subclass('HaveGeometry'    => @_) }
-sub HelpId           { &enquire_from_subclass('HelpId'          => @_) }
+sub HelpId           { 
+  return undef
+    unless grep ($_[0] eq $_,@widget_types);
+  &enquire_from_subclass('HelpId'          => @_);
+}
 sub PrintTitle       { &enquire_from_subclass('PrintTitle'      => @_) }
 sub EditorProperties { &enquire_from_subclass('EditorProperties'=> @_) }
-sub AssociatedIcon   { &enquire_from_subclass('AssociatedIcon'=> @_) }
+sub WidgetIconName   { &enquire_from_subclass('AssociatedIcon'=> @_) }
 
 sub enquire_from_subclass {
   shift if ref $_[0]; # no 'instance' methods allowed!

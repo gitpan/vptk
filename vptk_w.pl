@@ -7,11 +7,11 @@ my $os;      # what kind of OS we have: win/unix
 
 =head1 NAME
 
- vptk - Perl/Tk Visual resource editor (widget edition)
+ vptk_w - Perl/Tk Visual resource editor (widget edition)
 
 =head1 SYNOPSIS
 
- vptk [-help]
+ vptk_w [-help]
 
    -h[elp]  - show this help
 
@@ -20,15 +20,15 @@ my $os;      # what kind of OS we have: win/unix
   1. General considerations
   =========================
 
-  * The project supply toolkit for Perl/Tk widget-level design
- familiar with Perl/Tk
-  * It can be a 'long brush' tool for user interface sketching
+  * VPTK is a tool for Perl/Tk widget-level scripts development
+  * It can be used for user interface sketching
+  * Code is instantly generated and could be re-used in standalone app
 
   2. User interface
   =================
 
-  * All data stored in Perl/Tk include-file form
-  * Widgets displayed both visually and as hierarhy tree
+  * All generated code stored as Perl/Tk ready-to-run program
+  * Project displayed both visually and as widgets tree
   * Most functions accessible both from pull-down menu,
     toolbar panel and by keyboard shortcuts
 
@@ -36,9 +36,9 @@ my $os;      # what kind of OS we have: win/unix
   ===============
   * Commas and brackets prohibited inside of text fields
   * Due to known bugs in Tk some balloons not dispayed
-  * No undo/redo for file options changes
+  * No undo/redo for file properties changes
 
-  4. Main features
+  4. Implemented features
   ================
   * Undo for all artwork modifications
   * Unlimited undo/redo
@@ -55,12 +55,12 @@ my $os;      # what kind of OS we have: win/unix
   * Full menus support
   * Code generation with 'strict syntax'
   * Conflicts in geometry managers resolved automatically
-  * Baloon showing code for each widget
+  * Baloon diaplaying code for each widget
   * X/Y mouse pointer coordinates displayed
   * Default values for most widgets apon creation
   * Default entries for lists and other arrays (display only)
   * View options: Balloons on/off, blink on/off, coord on/off
-  * Arbitrary widget names on creation + rename dialog
+  * User-defined widget names on creation + rename option
   * Callback functions support
   * User-defined code support
   * Widget state variables
@@ -68,8 +68,10 @@ my $os;      # what kind of OS we have: win/unix
   * Code portions cut-n-paste
   * Syntax highlight in code preview window
   * NumEntry used for numeric data input
-  * Testing window
+  * Debugging mode for generated app
   * Syntax check for generated code (perl -c)
+  * All edited widgets defined as abstract objects
+  * New widgets could be plugged-in without main routine modification
   
   5. To be implemented
   ====================
@@ -187,7 +189,7 @@ BEGIN
     unless -d $toolbar;
   $os = 'win' unless $^O;
   $os = 'win' if $^O =~ /win/i;
-  $os = 'unix' if $^O =~ /linux|unix|aix|sun|solaris/i;
+  $os = 'unix' if $^O =~ /linux|unix|aix|sun|solaris|cygwin/i;
 }
 
 use strict;
@@ -225,7 +227,7 @@ if (grep /^--?h/,@ARGV)
   exit 1;
 }
 
-my $ver=q$Revision: 1.12 $;
+my $ver=q$Revision: 1.21 $;
 
 my $selected;         # Currently selected widget path
 my %widgets=();       # Tk widgets pointers for highlight
@@ -244,11 +246,7 @@ my @user_auto_vars;
 my @user_subroutines;
 my @callbacks;
 
-my @wrapped_widgets = vptk_w::VPTK_Widget::widget_types();
-# qw/Label Frame Button Entry Text/; # temporary array
-
-# and here is the table of all objects' properties
-my %w_attr = &ReadWidgetsOptions("$toolbar/vptk_w.attr.cfg");
+my @AllWidgetsNames = AllWidgetsNames();
 
 # Legal parameters per geometry:
 my (%w_geom) = (
@@ -257,16 +255,9 @@ my (%w_geom) = (
   'place' => [qw/-anchor -height -width -x -y -relheight -relwidth -relx -rely/]
 );
 
-my @LegalWidgets = (grep(&HaveGeometry($_),sort keys %w_attr),'packAdjust'); 
+my @OrdinaryWidgets = (grep(HaveGeometry($_),sort @AllWidgetsNames),'packAdjust'); 
 # (excluded widgets without geometry)
-my @wrapped_icons;
-foreach my $w (@wrapped_widgets) {
-  if(! grep($_ eq $w,@LegalWidgets) ) {
-    push(@LegalWidgets,$w) if &HaveGeometry($w);
-    push(@wrapped_icons,vptk_w::VPTK_Widget::AssociatedIcon($w));
-  }
-}
-@LegalWidgets = (grep(&HaveGeometry($_),sort @LegalWidgets),'packAdjust');
+my @wrapped_icons = map(WidgetIconName($_),@AllWidgetsNames);
 #
 # ======================== Geometry management for Main window ================
 # 
@@ -288,9 +279,7 @@ $mw->fontCreate('C_bold',qw/-family courier -weight bold/);
 # read in all pictures:
 foreach (qw/open save new before after subwidget 
   undo redo viewcode properties delete exit cut copy paste
-  packadjust button text label listbox labentry entry frame labframe optionmenu
-  message scale browseentry checkbutton radiobutton menubutton cascade command
-  separator notebook notebookframe justify_right justify_left justify_center
+  justify_right justify_left justify_center
   undef fill_both fill_x fill_y
   rel_flat rel_groove rel_raised rel_ridge rel_solid rel_sunken
   anchor_center anchor_e anchor_n anchor_ne anchor_nw anchor_s anchor_se anchor_sw anchor_w
@@ -491,7 +480,7 @@ $tf->bind('<Button-1>',
 $tf->configure(
   -command  => sub{&set_selected($tf->info('data',$tf->infoSelection));&edit_properties},
   -browsecmd=> sub{&set_selected($tf->info('data',$tf->infoSelection));} );
-$tf->add('mw',-text=>'mw',-data=>'mw',-image=>&WidgetIcon('Frame'));
+$tf->add('mw',-text=>'mw',-data=>'mw',-image=>WidgetIcon('Frame'));
 
 my $w;
 &clear_preview(); # this will initialize preview vindow
@@ -647,11 +636,7 @@ sub debug_run
 }
 
 sub WidgetIcon {
-  return $pic{vptk_w::VPTK_Widget::AssociatedIcon($_[0])}
-}
-
-sub HaveGeometry {
-  return vptk_w::VPTK_Widget::HaveGeometry($_[0]);
+  return $pic{WidgetIconName($_[0])}
 }
 
 sub Tk::Error
@@ -705,7 +690,7 @@ sub view_repaint
       }
       (@arg)=(%arg);
     }
-    if(grep($_ eq $d->{'type'}, @wrapped_widgets) ) {
+    if(grep($_ eq $d->{'type'}, @AllWidgetsNames) ) {
       my $obj = vptk_w::VPTK_Widget->new($d->{'type'},-id=>$id);
       my ($geom,$geom_opt)=(split '[)(]',$d->{'geom'});
       $obj->InstanceData(
@@ -714,8 +699,6 @@ sub view_repaint
       );
       $tmp_vars{$id} = $obj->Draw($x);
     }
-    # FIXPOINT 1
-    else{print "ERROR: widget of type ".$d->{'type'}." can't be displayed!\n";}
     if(&HaveGeometry($d->{'type'}))
     {
       my $balloonmsg=&code_line_print($path);
@@ -732,21 +715,6 @@ sub view_repaint
       $tmp_vars{$id}->bind('<Double-1>',
         sub{&set_selected($tf->info('data',$path));&edit_properties});
       &bind_xy_move($tmp_vars{$id});
-      if(!grep($_ eq $d->{'type'}, @wrapped_widgets)) {
-        my ($geom,$geom_opt)=(split '[)(]',$d->{'geom'});
-        if($geom eq 'pack')
-        {
-          $tmp_vars{$id}->pack(&split_opt($geom_opt));
-        }
-        elsif($geom eq 'grid')
-        {
-          $tmp_vars{$id}->grid(&split_opt($geom_opt));
-        }
-        elsif($geom eq 'place')
-        {
-          $tmp_vars{$id}->place(&split_opt($geom_opt));
-        }
-      }
     }
     $widgets{$path}=$tmp_vars{$id};
   }
@@ -818,7 +786,7 @@ sub struct_new
   &clear_preview();
   # clean tree widget:
   $tf->delete('all');
-  $tf->add('mw',-text=>'mw',-data=>'mw',-image=>&WidgetIcon('Frame'));
+  $tf->add('mw',-text=>'mw',-data=>'mw',-image=>WidgetIcon('Frame'));
   #________________________________
   # data section:
   @tree=('mw');
@@ -1190,9 +1158,8 @@ sub edit_paste
   # repaint tree:
   $tf->delete('all');
   $descriptor{'mw'}->{'type'}='Frame';
-  my $type = $descriptor{&path_to_id($_)}->{'type'};
-  grep ( $tf->add($_,-text=>&path_to_id($_),-data=>$_,
-    -image=>&WidgetIcon($type)), @tree );
+  map ( $tf->add($_,-text=>&path_to_id($_),-data=>$_,
+    -image=>WidgetIcon($descriptor{&path_to_id($_)}->{'type'})), @tree );
   delete $descriptor{'mw'};
   &changes(1);
   &set_selected($selected);
@@ -1229,7 +1196,7 @@ sub insert
   return if($selected eq 'mw' && $where ne 'subwidget');
   # 1. ask for widget type
   my $db=$mw->DialogBox(-title => "Create $where $selected",-buttons=>['Ok','Cancel']);
-  my @LegalW=@LegalWidgets;
+  my @LegalW=@OrdinaryWidgets;
   # determine where insertion point is
   # if it's menu/menubutton/cascade - change LegalW to respective array
   # Menubutton -> Menu
@@ -1260,7 +1227,7 @@ sub insert
   {
     $f->Radiobutton(-variable=>\$type,-value=>$lw,-text=>$lw)->
       grid(-row=>$i,-column=>0,-sticky=>'w',-padx=>18);
-    $f->Label(-image=>&WidgetIcon($lw))->
+    $f->Label(-image=>WidgetIcon($lw))->
       grid(-row=>$i,-column=>1,-sticky=>'w',-padx=>18);
     $i++;
   }
@@ -1305,19 +1272,17 @@ sub do_insert
   my @w_opt=(); 
   
   # default values:
-  # FIXPOINT 2
-  foreach my $k(keys %{$w_attr{$type}})
+  my $widget_attr = EditorProperties($type);
+  foreach my $k(keys %$widget_attr)
   {
     # text fields
     next if $k =~ 
       /^-(accelerator|show|command|createcmd|raisecmd|textvariable|variable|onvalue|offvalue)$/;
-    push(@w_opt,"$k, $id") if($w_attr{$type}->{$k}=~/text/);
+    push(@w_opt,"$k, $id") if($widget_attr->{$k}=~/text/);
   }
   # Set default attributes for known widgets:
-#  if(grep($_ eq $type, @wrapped_widgets)) {
-    my $default_params = vptk_w::VPTK_Widget::DefaultParams($type);
-    push(@w_opt, @$default_params);
-#  }
+  my $default_params = DefaultParams($type);
+  push(@w_opt, @$default_params);
 
   my $geom='';
   if (&HaveGeometry($type))
@@ -1334,7 +1299,7 @@ sub do_insert
   splice(@tree,$j,0,"${insert_path}.$id");
 
   # 4. Update display tree
-  my $image =  &WidgetIcon($type);
+  my $image =  WidgetIcon($type);
   if($where eq 'subwidget')
   {
     $tf->add("${insert_path}.$id",-text=>$id,
@@ -1352,11 +1317,11 @@ sub do_insert
     $parent=$id;
     $type='Menu';
     $id=&generate_unique_id($type);
-    my $default_params = vptk_w::VPTK_Widget::DefaultParams($type);
+    my $default_params = DefaultParams($type);
     $descriptor{$id}=&descriptor_create($id,$parent,$type,join(', ',@$default_params),'');
     splice(@tree,$j+1,0,"${insert_path}.$parent.$id");
     $tf->add("${insert_path}.$parent.$id",-text=>$id,
-      -data=>"${insert_path}.$parent.$id",-image=>&WidgetIcon($type));
+      -data=>"${insert_path}.$parent.$id",-image=>WidgetIcon($type));
   }
   &changes(1);
 }
@@ -1419,11 +1384,8 @@ re_enter:
   
   return if $id eq 'mw';
   return if $d->{'type'} eq 'separator';
-  my $pr=$w_attr{$d->{'type'}};
-  if(grep($_ eq $d->{'type'}, @wrapped_widgets))   { 
-    $pr = vptk_w::VPTK_Widget::EditorProperties($d->{'type'});
-  }
-  # return unless keys %$pr;
+  my $pr = EditorProperties($d->{'type'});
+  return unless keys %$pr;
   
   my @frm_pak=qw/-side left -fill both -expand 1 -padx 5 -pady 5/;
   my @pl=qw/-side left -padx 5 -pady 5/;
@@ -1538,6 +1500,26 @@ re_enter:
           -textvariable=>\$lpack{'-anchor'})->pack(@right_pack);
         $f->Optionmenu(-options=>[qw/left top right bottom/],
           -textvariable=>\$lpack{'-side'})->pack(@right_pack);
+      }
+      elsif($pr->{$k} eq 'scrolled')
+      {
+        my ($scl_vert,$scl_hor);
+        ($scl_vert) = ($val{$k}=~/(o?[ns])/); 
+        ($scl_hor)  = ($val{$k}=~/(o?[we])/); $val{'-scrolled'}=$val{$k}ne'';
+        $f->Optionmenu(-options=>['',qw(w e ow oe)],-textvariable=>\$scl_hor,
+           -command=>sub{$val{$k} = $scl_vert . $scl_hor; $val{'-scrolled'}=$val{$k}ne'';})
+            ->pack(@right_pack);
+        $f->Optionmenu(-options=>['',qw(s n os on)],-textvariable=>\$scl_vert,
+           -command=>sub{$val{$k} = $scl_vert . $scl_hor; $val{'-scrolled'}=$val{$k}ne'';})
+            ->pack(@right_pack);
+        $f->Checkbutton(-text => 'enabled',
+            -relief => 'solid',-variable=>\$val{'-scrolled'},-borderwidth=>0,
+            -command => sub{ 
+                if($val{'-scrolled'}){$scl_vert='s';$scl_hor='e'}
+                else        {$scl_vert=$scl_hor=''} 
+                $val{$k} = $scl_vert . $scl_hor;
+              }
+            )->pack(@right_pack);
       }
     }
     foreach (0 .. 9-scalar(keys %$pr))
@@ -1708,6 +1690,8 @@ re_enter:
   {
     foreach my $k( keys %val)
     {
+      delete $val{$k}
+        if $pr->{$k} eq 'scrolled' && !$val{'-scrolled'};
       $val{$k} =~ tr/,/./ unless $k eq '-labelPack';
       if($k =~/^-(showvalue|tearoff|indicatoron|underline)$/)
       {
@@ -1773,19 +1757,17 @@ sub tkpod
   $id=$selected unless $id; # default if no argument
   $id=~s/.*\.//; # clean up when 'selected' used
   my $widget='';
-  $widget=$descriptor{$id}->{'type'} # for real widgets!
-    if $descriptor{$id}->{'type'} =~ /^[A-Z]/;
-  $widget='Adjuster' if $descriptor{$id}->{'type'} eq 'packAdjust';
-  $widget='NoteBook' if $descriptor{$id}->{'type'} eq 'NoteBookFrame';
+  my $hid = HelpId($descriptor{$id}->{'type'});
+  $widget = $hid if $hid;
   $widget=$id if $id=~
     /^(grid|place|pack|overview|options|option|tkvars|grab|bind|bindtags|callbacks|event)$/;
-  $widget='MainWindow' if $id eq 'mw';
-  $widget='Menu' unless $widget;
+  $widget = 'MainWindow' if $id eq 'mw';
+  $widget = "Tk::$widget" unless $widget =~ /^Tk::/;
   $mw->Busy;
   my $pod_util = ($os eq 'win')?
     'start cmd /c perldoc' :
     'xterm -e perldoc';
-  system("$pod_util Tk::".$widget.' &');
+  system("$pod_util $widget &");
   $mw->Unbusy;
 }
 
@@ -1938,6 +1920,12 @@ sub code_line_print
     if $descriptor{$parent}->{'type'} eq 'cascade';
   my $type=$d->{'type'};
   my $opt=&quotate($d->{'opt'});
+  if($opt =~ /-scrolled/) {
+    $opt =~ s/^/'$type', /;
+    $opt =~ s/-scrolled\s?=>\s?1//;
+    $opt =~ s/,\s*,/,/;
+    $type = 'Scrolled';
+  }
   if($descriptor{$parent}->{'type'} eq 'NoteBook')
   {
     $type='add';
@@ -2048,6 +2036,10 @@ sub struct_read # read external data structure to internal
         }
 # 2.
         next unless $id;
+        if($type =~ /^\s*Scrolled\s*$/) {
+          my ($real_type,$real_opt) = $opt =~ /^\s*'?(\w+)'?,\s(.*)/;
+          $type=$real_type; $opt=$real_opt.", -scrolled=>1";
+        }
         if($parent ne 'mw' && ! defined $descriptor{$parent})
         {
 # error - report in Tk style:
@@ -2070,7 +2062,7 @@ sub struct_read # read external data structure to internal
           $type='NoteBookFrame';
           $opt=~s/^\s*\S+\s*,\s*//;
         }
-        my $image =  &WidgetIcon($type);
+        my $image = WidgetIcon($type);
         if($insert_path)
         {
           $tf->add("$parent_path.$id",-text=>$id,-data=> "$parent_path.$id",

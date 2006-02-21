@@ -6,49 +6,9 @@
 
 package vptk_w::ConfigRead;
 use Exporter 'import';
-@EXPORT = qw(ReadWidgetsOptions ReadHTML ReadCnfDlgBallon);
-# @EXPORT = qw(ReadWidgetsOptions _test1_); # uncomment this line for testing
+@EXPORT = qw(ReadHTML ReadCnfDlgBallon);
 
 use strict;
-
-sub ReadWidgetsOptions
-{
-  my ($file_name) = @_; # input parameter - file name
-
-  open(FILE,$file_name) || 
-    die "$0 ConfigRead.ReadWidgetsOptions ERROR: read $file_name - $!\n";
-  my $result = {};
-  my $name='';
-  my @data = ();
-  foreach my $line (grep(!/^\s*#/,<FILE>))
-  {
-    $line =~ s/(^\s*)|(\s*$)//g;
-    if($line=~/^\s*\w+\s*=>/)
-    {
-      ($name) = $line =~ /^\s*(\w+)\s*=>/;
-#      print "D0: name=<$name>\n";
-      next;
-    }
-    elsif($line=~/=>|,/)
-    {
-      my $tmp = $line; chomp $tmp;
-      $tmp =~ s/,$//;
-      $tmp =~ s/[{}']//g;
-#      print "D1: data=<@data>,tmp=<$tmp>\n";
-      push(@data,split(/=>|,/,$tmp));
-    }
-    # in some cases brackets opened and closed in same line:
-    if($line =~ /\}/ && $name)
-    {
-      $result->{$name} = {@data};
-      $name = '';
-      @data = ();
-    }
-  }
-  close FILE;
-
-  return %$result; # output result - hash of widget parameters
-}
 
 # Read-in limited HTML format:
 # 1. Text is pre-formatted
@@ -127,19 +87,4 @@ sub ReadCnfDlgBallon
   return (%cnf_dlg_ballon);
 }
 
-sub _test1_
-{
-  # my %data = &ReadWidgetsOptions(); # should fail!
-  my %data = &ReadWidgetsOptions('vptk_w.attr.cfg');
-
-  foreach my $widget(sort keys %data)
-  {
-    print "DEBUG: $widget=>\n";
-    print "DEBUG: {".
-      join(',',
-        map("$_=>$data{$widget}->{$_}",keys %{$data{$widget}})
-      )."}\n";
-  }
-}
-
-1;
+1;#)

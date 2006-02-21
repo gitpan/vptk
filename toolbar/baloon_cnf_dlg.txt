@@ -263,3 +263,9 @@ in a NoteBook widget;
  -raisecmd => subroutine pointer
 Specifies a callback to be called whenever this page is raised by the user.
 
+ -scrollbars => where
+Expects as argument the position where the scrollbars should be
+created:  w, e or n, s or a combination of them.  If the one or
+both positions are prefixed with o the scrollbar will only show up
+if there is a 'real' need to scroll.
+

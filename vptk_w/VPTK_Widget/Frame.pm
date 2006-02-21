@@ -10,7 +10,7 @@ sub PrintTitle    { 'Frame' }
 sub AssociatedIcon{ 'frame' }
 sub EditorProperties {
   return {
-    -background=>'color',-borderwidth=>'int+',-relief=>'relief',
+    -background=>'color',-borderwidth=>'int+',-relief=>'relief',-scrollbars=>'scrolled',
     -label=>'text',-width=>'int+',-height=>'int+'
   }
 }
