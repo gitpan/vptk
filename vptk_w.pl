@@ -227,7 +227,7 @@ if (grep /^--?h/,@ARGV)
   exit 1;
 }
 
-my $ver=q$Revision: 1.21 $;
+my $ver=q$Revision: 1.22 $;
 
 my $selected;         # Currently selected widget path
 my %widgets=();       # Tk widgets pointers for highlight
@@ -1521,6 +1521,17 @@ re_enter:
               }
             )->pack(@right_pack);
       }
+      elsif($pr->{$k} eq 'sticky') 
+      {
+        my %st;
+        foreach my $s (qw/n s e w/)
+        {
+          $st{$s}=grep(/$s/,$val{$k});
+          $f->Checkbutton(-text=>$s,-variable=>\$st{$s},
+              -command => sub{$val{$k}=~s/$s//g;$val{$k}.=$s if $st{$s}})
+            ->pack(@right_pack);
+        }
+      }
     }
     foreach (0 .. 9-scalar(keys %$pr))
     {
@@ -1924,6 +1935,7 @@ sub code_line_print
     $opt =~ s/^/'$type', /;
     $opt =~ s/-scrolled\s?=>\s?1//;
     $opt =~ s/,\s*,/,/;
+    $opt =~ s/,\s*$//;
     $type = 'Scrolled';
   }
   if($descriptor{$parent}->{'type'} eq 'NoteBook')

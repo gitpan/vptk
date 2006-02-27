@@ -87,7 +87,9 @@ Indicates that the text in the widget will wrap when it gets longer than amount
 Adds a label to the widget with the text "labelstring".
 
  -sticky => string
-String contains characters n, s, e, or w. Widget will stick to those sides.
+String contains characters n, s, e, or w. 
+Each letter refers to a side (north, south, east, or west)
+Widget will stick to those sides.
 
  -column => n
 Sets the column to place widget in (n >= 0).
@@ -269,3 +271,7 @@ created:  w, e or n, s or a combination of them.  If the one or
 both positions are prefixed with o the scrollbar will only show up
 if there is a 'real' need to scroll.
 
+ -gridded => direction
+Specifies if the top and left edges of the pane should snap to a grid column. 
+This option is only useful if the widgets in the pane are managed 
+by the grid geometry manager. Possible values are x, y and xy.

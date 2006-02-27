@@ -10,7 +10,7 @@ sub PrintTitle    { 'Pane' }
 sub AssociatedIcon{ 'frame' }
 sub EditorProperties {
   return {
-    -scrollbars=>'scrolled',-sticky=>'',
+    -scrollbars=>'scrolled',-sticky=>'sticky',
     -gridded => 'menu(|x|y|xy)'
   }
 }
