@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'flat'] }
-sub HelpId        { 'Tk::Message' }
+sub TkClassName   { 'Tk::Message' }
 sub PrintTitle    { 'Message' }
 sub AssociatedIcon{ 'message' }
 sub EditorProperties {

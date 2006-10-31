@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [] }
-sub HelpId        { 'Tk::NoteBook' }
+sub TkClassName   { 'Tk::NoteBook' }
 sub PrintTitle    { 'NoteBook' }
 sub AssociatedIcon{ 'notebook' }
 sub EditorProperties {

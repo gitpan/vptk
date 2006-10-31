@@ -96,15 +96,16 @@ module code
  · Geometry manager conflicts resolution (automatic)
  · Undo/Redo
  · Cut-'n'-Paste
+ · Functional part before main loop
+ · Balloons
 
 =head1 Features that are not supported (yet)
 
+ · Bindings
  · Non-static GUI tricks
- · Balloons
  · Lists/trees/tables contents
  · Control over all widget's options
  · Extended widgets set (like mega-widgets)
- · Functional part before main loop
  · Free input/output format
  · Drag-'n'-drop interface
 

@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'sunken'] }
-sub HelpId        { 'Tk::ROText' }
+sub TkClassName   { 'Tk::ROText' }
 sub PrintTitle    { 'ROText' }
 sub AssociatedIcon{ 'text' }
 sub EditorProperties {

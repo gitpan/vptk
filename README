@@ -1,7 +1,7 @@
 
 Visual Perl/Tk editor (widget edition)
 
-               Revision 2.01
+               Revision 2.16
 
   (by Felix Liberman - FelixL@Rambler.ru)
 
@@ -15,7 +15,7 @@ This software distributed FREE under GNU Public License.
 You can visit http://www.gnu.org in order to see details.
 Original author - Felix Liberman - welcomes all contributors
 to make changes and re-distribute this product under GPL terms.
-See also Chapter 8 of this document.
+See also Chapter 5 of this document.
 
   1. Installation
 
@@ -207,7 +207,7 @@ suggestions.
   Thanks to PerlTk.ORG web-site for publishing my dilettante
 artwork among real PerlTk classics.
 
-  9. Copyright
+  5. Copyright
 
 Copyright (c) 2002 Felix Liberman
 

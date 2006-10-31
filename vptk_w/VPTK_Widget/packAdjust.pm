@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 0 }
 sub DefaultParams { [] }
-sub HelpId        { 'Tk::Adjuster' }
+sub TkClassName   { 'Tk::Adjuster' }
 sub PrintTitle    { 'packAdjust' }
 sub AssociatedIcon{ 'packadjust' }
 sub EditorProperties {

@@ -1,0 +1,8 @@
+VPTK_W Revision 2.16
+
+- Implemented Object-Oriented code output
+- Project properties displayed in "notebook" style
+- Auto-focus on input fields in project options window
+- Added "balloons" (widget tooltips) support
+- Extended properties set for "Label" widget (incl. bitmap)
+- Fixed minor bug in "Ctrl/S" binding in main window

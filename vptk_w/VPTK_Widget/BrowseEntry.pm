@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'sunken',-labelPack=>"[-side=>'left']"] }
-sub HelpId        { 'Tk::BrowseEntry' }
+sub TkClassName   { 'Tk::BrowseEntry' }
 sub PrintTitle    { 'BrowseEntry' }
 sub AssociatedIcon{ 'browseentry' }
 sub EditorProperties {

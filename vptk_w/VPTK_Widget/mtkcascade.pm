@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 0 }
 sub DefaultParams { [] }
-sub HelpId        { 'Tk::Menu' }
+sub TkClassName   { 'Tk::Menu' }
 sub PrintTitle    { 'cascade' }
 sub AssociatedIcon{ 'cascade' }
 sub EditorProperties {

@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'flat'] }
-sub HelpId        { 'Tk::Frame' }
+sub TkClassName   { 'Tk::Frame' }
 sub PrintTitle    { 'Frame' }
 sub AssociatedIcon{ 'frame' }
 sub EditorProperties {

@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'flat',-indicatoron=>1] }
-sub HelpId        { 'Tk::Radiobutton' }
+sub TkClassName   { 'Tk::Radiobutton' }
 sub PrintTitle    { 'Radiobutton' }
 sub AssociatedIcon{ 'radiobutton' }
 sub EditorProperties {

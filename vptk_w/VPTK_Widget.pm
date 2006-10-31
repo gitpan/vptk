@@ -16,7 +16,7 @@ package vptk_w::VPTK_Widget;
 
 use strict;
 use Exporter 'import';
-our @EXPORT = qw(HaveGeometry WidgetIconName AllWidgetsNames EditorProperties DefaultParams HelpId);
+our @EXPORT = qw(HaveGeometry WidgetIconName AllWidgetsNames EditorProperties DefaultParams TkClassName);
 
 use vptk_w::VPTK_Geometry;
 my @widget_types;
@@ -115,10 +115,10 @@ sub Draw {
 
 sub DefaultParams    { &enquire_from_subclass('DefaultParams'   => @_) }
 sub HaveGeometry     { &enquire_from_subclass('HaveGeometry'    => @_) }
-sub HelpId           { 
+sub TkClassName      { 
   return undef
     unless grep ($_[0] eq $_,@widget_types);
-  &enquire_from_subclass('HelpId'          => @_);
+  &enquire_from_subclass('TkClassName'          => @_);
 }
 sub PrintTitle       { &enquire_from_subclass('PrintTitle'      => @_) }
 sub EditorProperties { &enquire_from_subclass('EditorProperties'=> @_) }

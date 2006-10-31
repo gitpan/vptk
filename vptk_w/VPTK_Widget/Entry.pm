@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'sunken'] }
-sub HelpId        { 'Tk::Entry' }
+sub TkClassName   { 'Tk::Entry' }
 sub PrintTitle    { 'Entry' }
 sub AssociatedIcon{ 'entry' }
 sub EditorProperties {
@@ -17,8 +17,9 @@ sub EditorProperties {
 }
 
 sub JustDraw {
-  my ($this,$parent,@args) = @_;
-  return $parent->Entry(@args);
+  my ($this,$parent,%args) = @_;
+  undef($args{'-textvariable'}) if exists $args{'-textvariable'};
+  return $parent->Entry(%args);
 }
 
 1;#)

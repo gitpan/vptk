@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'sunken'] }
-sub HelpId        { 'Tk::Listbox' }
+sub TkClassName   { 'Tk::Listbox' }
 sub PrintTitle    { 'Listbox' }
 sub AssociatedIcon{ 'listbox' }
 sub EditorProperties {

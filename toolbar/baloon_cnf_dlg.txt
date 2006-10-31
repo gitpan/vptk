@@ -275,3 +275,12 @@ if there is a 'real' need to scroll.
 Specifies if the top and left edges of the pane should snap to a grid column. 
 This option is only useful if the widgets in the pane are managed 
 by the grid geometry manager. Possible values are x, y and xy.
+
+ -blocks => number
+This controls the number of blocks to be used to construct the
+progress bar. The default is to break the bar into 10 blocks.
+
+ -gap => pixels
+This is the spacing (in pixels) between each block. Defaults to 1.
+Use 0 to get a continuous bar.
+

@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'flat'] }
-sub HelpId        { 'Tk::Scale' }
+sub TkClassName   { 'Tk::Scale' }
 sub PrintTitle    { 'Scale' }
 sub AssociatedIcon{ 'scale' }
 sub EditorProperties {

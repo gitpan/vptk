@@ -28,7 +28,7 @@ use base qw(vptk_w::VPTK_Widget);
 
     HaveGeometry  => (0/1) 
     DefaultParams => [-relief=>'flat']
-    HelpId        => 'Tk::Label',
+    TkClassName   => 'Tk::Label',
     PrintTitle    => 'Label',
     EditorProperties => {-background=>'color',-borderwidth=>'int+'},
 
@@ -38,14 +38,15 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'flat'] }
-sub HelpId        { 'Tk::Label' }
+sub TkClassName   { 'Tk::Label' }
 sub PrintTitle    { 'Label' }
 sub AssociatedIcon{ 'label' }
 sub EditorProperties {
   return {
+    -bitmap=>'text',
     -background=>'color',-foreground=>'color',-borderwidth=>'int+',
     -justify=>'justify',-textvariable=>'text',-underline=>'int+',
-    -wraplength=>'int+',-relief=>'relief',-text=>'text',
+    -wraplength=>'int+',-relief=>'relief',-text=>'text',-height=>'int+',
     -padx=>'int+',-pady=>'int+',-width=>'int+',-anchor=>'anchor'
   }
 }

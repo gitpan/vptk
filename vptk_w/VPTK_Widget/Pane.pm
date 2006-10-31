@@ -5,12 +5,14 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [] }
-sub HelpId        { 'Tk::Pane' }
+sub TkClassName   { 'Tk::Pane' }
 sub PrintTitle    { 'Pane' }
 sub AssociatedIcon{ 'frame' }
 sub EditorProperties {
   return {
     -scrollbars=>'scrolled',-sticky=>'sticky',
+    -background=>'color',-width=>'int+',-height=>'int+',
+    -borderwidth=>'int+',-relief=>'relief',
     -gridded => 'menu(|x|y|xy)'
   }
 }

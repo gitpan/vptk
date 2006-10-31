@@ -1,6 +1,6 @@
 =head1 NAME
 
- vptk_w::ExtraWidgets -- read vptk_w configuration information
+ vptk_w::EditorServices -- vptk_w generic GUI services
 
 =cut
 

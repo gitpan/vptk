@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'sunken',-labelPack=>"[-side=>'left',-anchor=>'n']"] }
-sub HelpId        { 'Tk::LabEntry' }
+sub TkClassName   { 'Tk::LabEntry' }
 sub PrintTitle    { 'LabEntry' }
 sub AssociatedIcon{ 'labentry' }
 sub EditorProperties {

@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 0 }
 sub DefaultParams { [-tearoff=>0] }
-sub HelpId        { 'Tk::Menu' }
+sub TkClassName   { 'Tk::Menu' }
 sub PrintTitle    { 'Menu' }
 sub AssociatedIcon{ 'menu' }
 sub EditorProperties {

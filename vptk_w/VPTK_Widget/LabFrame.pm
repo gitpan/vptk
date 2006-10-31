@@ -5,7 +5,7 @@ use base qw(vptk_w::VPTK_Widget);
 
 sub HaveGeometry  { 1 }
 sub DefaultParams { [-relief=>'ridge',-labelside=>'acrosstop'] }
-sub HelpId        { 'Tk::LabFrame' }
+sub TkClassName   { 'Tk::LabFrame' }
 sub PrintTitle    { 'LabFrame' }
 sub AssociatedIcon{ 'labframe' }
 sub EditorProperties {
