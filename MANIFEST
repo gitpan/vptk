@@ -1,5 +1,5 @@
-RELEASE_NOTES.txt
 README
+RELEASE_NOTES.txt
 samples
 samples/georgian.pl
 samples/helicopt.pl
@@ -26,8 +26,10 @@ toolbar/anchor_s.gif
 toolbar/anchor_se.gif
 toolbar/anchor_sw.gif
 toolbar/anchor_w.gif
+toolbar/balloon.xpm
 toolbar/baloon_cnf_dlg.txt
 toolbar/before.xpm
+toolbar/bind.xpm
 toolbar/browseentry.xpm
 toolbar/button.xpm
 toolbar/canvas_help.html
@@ -88,6 +90,7 @@ toolbar/rel_solid.gif
 toolbar/rel_sunken.gif
 toolbar/repaint.gif
 toolbar/repaint.xpm
+toolbar/run.xpm
 toolbar/save.gif
 toolbar/save.xpm
 toolbar/scale.gif
@@ -113,20 +116,19 @@ toolbar/undo.xpm
 toolbar/viewcode.gif
 toolbar/viewcode.xpm
 toolbar/viewcode_checkbox_button_radio.gif
-toolbar/vptk_w.attr.cfg
 toolbar/widget_help.html
 vptk.pl
 vptk_presentation.pod
 vptk_w
 vptk_w/ConfigRead.pm
 vptk_w/EditorServices.pm
-vptk_w/Project.pm
+vptk_w/Project
 vptk_w/Project/Code.pm
 vptk_w/Project/Options.pm
 vptk_w/Project/Widgets.pm
+vptk_w/Project.pm
 vptk_w/VPTK_Geometry.pm
 vptk_w/VPTK_Widget
-vptk_w/VPTK_Widget/.Pane.pm.swp
 vptk_w/VPTK_Widget/BrowseEntry.pm
 vptk_w/VPTK_Widget/Button.pm
 vptk_w/VPTK_Widget/Checkbutton.pm
@@ -149,6 +151,7 @@ vptk_w/VPTK_Widget/NoteBookFrame.pm
 vptk_w/VPTK_Widget/Optionmenu.pm
 vptk_w/VPTK_Widget/packAdjust.pm
 vptk_w/VPTK_Widget/Pane.pm
+vptk_w/VPTK_Widget/ProgressBar.pm
 vptk_w/VPTK_Widget/Radiobutton.pm
 vptk_w/VPTK_Widget/ROText.pm
 vptk_w/VPTK_Widget/Scale.pm

@@ -45,7 +45,7 @@ sub EditorProperties {
   return {
     -bitmap=>'text',
     -background=>'color',-foreground=>'color',-borderwidth=>'int+',
-    -justify=>'justify',-textvariable=>'text',-underline=>'int+',
+    -justify=>'justify',-textvariable=>'variable',-underline=>'int+',
     -wraplength=>'int+',-relief=>'relief',-text=>'text',-height=>'int+',
     -padx=>'int+',-pady=>'int+',-width=>'int+',-anchor=>'anchor'
   }

@@ -63,6 +63,14 @@ sub push { # default putter
   $this->{data}->{$id} = $data;
 }
 
+sub set { # by-name setter
+  my $this = shift;
+  my $id   = shift;
+  my $value = shift;
+  return undef unless exists $this->{data}->{$id};
+  $this->{data}->{$id}=$value;
+}
+
 sub get { # by-name getter
   my $this = shift;
   my $id   = shift;

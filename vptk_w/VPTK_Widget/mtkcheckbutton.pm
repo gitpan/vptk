@@ -12,7 +12,7 @@ sub EditorProperties {
   return {
     -label=>'text',-accelerator=>'text',-background=>'color',-onvalue=>'text',
     -foreground=>'color',-underline=>'int+',-command=>'callback',
-    -variable=>'text',-offvalue=>'text'
+    -variable=>'variable',-offvalue=>'text'
   }
 }
 

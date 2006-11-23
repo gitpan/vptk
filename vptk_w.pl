@@ -225,7 +225,7 @@ if (grep /^--?h/,@ARGV)
   exit 1;
 }
 
-my $ver=q$Revision: 2.16 $;
+my $ver=q$Revision: 2.24 $;
 
 my $selected;         # Currently selected widget path
 my %widgets=();       # Displayed Tk visual objects (widgets)
@@ -243,6 +243,15 @@ my ($view_balloons,$view_blink,$view_pointerxy)=(1,0,0);
 my @main_clipboard=();
 my @user_auto_vars;
 my @callbacks;
+my @user_subs;
+my @project_bindings;
+# Structure of project_bindings:
+# ['widget_id'=>'event name'=>'callback'], ...
+my $wProjOptionsHintMsg;
+my %IDE_settings;
+my %Project_defaults;
+my $balloon_bg_color;
+my $balloon_delay;
 
 my @AllWidgetsNames = AllWidgetsNames();
 
@@ -260,7 +269,7 @@ my @wrapped_icons = map(WidgetIconName($_),@AllWidgetsNames);
 # ======================== Geometry management for Main window ================
 # 
 my $mw = MainWindow->new(-title=>"Visual Perl Tk $ver (widget edition)");
-&SetMainPalette($mw,'gray90','black');
+&ResetIDE_SettingsToDefaults();
 
 # Prepare help from HTML file:
 # 1. read HTML file
@@ -273,8 +282,8 @@ map s/^\S+\s+//,@html_gifs;
 $mw->fontCreate('C_bold',qw/-family courier -weight bold/);
 
 # read in all pictures:
-foreach (qw/open save new before after subwidget balloon
-  undo redo viewcode properties delete exit cut copy paste
+foreach (qw/open save new before after subwidget balloon run
+  undo redo viewcode properties delete exit cut copy paste bind
   justify_right justify_left justify_center
   undef fill_both fill_x fill_y
   rel_flat rel_groove rel_raised rel_ridge rel_solid rel_sunken
@@ -323,6 +332,7 @@ $menubar->Menubutton(qw/-text File -underline 0 -tearoff 0 -menuitems/ =>
     [Button => 'Save ~As ...', -command => [\&file_save, 'Save As']],
     [Separator => ''],
     [Button => '~Project properties ...',   -command => \&file_properties],
+    [Button => '~Editor properties ...',       -command => [\&file_properties,'IDE']],
     [Separator => ''],
     [Button => '~Quit',        -command => \&abandon,   -accelerator => 'ESC'],
   ])->pack(-side=>'left');
@@ -356,11 +366,11 @@ $menubar->Menubutton(qw/-text View -underline 0 -tearoff 0 -menuitems/ =>
     [Cascade => '~Options', -tearoff=>0, -menuitems =>
       [
         [Checkbutton=>'~Show widget balloons',
-	  -variable=>\$view_balloons,-command=>\&view_repaint],
+          -variable=>\$view_balloons,-command=>\&view_repaint],
         [Checkbutton=>'~Blink widget on selection',-variable=>\$view_blink],
         [Checkbutton=>'Show ~mouse pointer X,Y coordinates',
-	  -variable=>\$view_pointerxy,-command=>\&view_repaint],
-	[Button => '~Re-color myself',   -command=> \&ColoringScheme ]
+          -variable=>\$view_pointerxy,-command=>\&view_repaint],
+        [Button => '~Re-color myself',   -command=> \&ColoringScheme ]
       ]
     ],
   ])->pack(-side=>'left');
@@ -411,7 +421,7 @@ $popup->add('command',-label=>'Rename',-underline=>0,-command=>\&rename);
 $popup->add('command',-label=>'Delete',-underline=>0,-command=>\&edit_delete,-accelerator => 'Delete');
 
 my $bf=$mw->Frame()->
-form(-top=>$menubar,-left=>'%0',-right=>'%100',-bottom=>'%100');
+  form(-top=>$menubar,-left=>'%0',-right=>'%100',-bottom=>'%100');
 # ===============
 # 'buttons' frame
 # ===============
@@ -430,7 +440,7 @@ $status_frame->Label(-textvariable=>\$xy,-relief=>'sunken',-borderwidth=>2,-widt
 # ==========
 # ctrl_frame
 # ==========
-$b=$mw->Balloon(-background=>'lightyellow',-initwait=>550);
+$b=$mw->Balloon();
 
 my @buttons = 
 (
@@ -451,8 +461,10 @@ my @buttons =
   ['paste',    \&edit_paste,          'Paste from clipboard before selected'],
   ['properties',\&edit_properties,    'View & edit properties'],
   ['balloon',  \&edit_balloon,        'Edit widget\'s balloon'],
+  ['bind',     \&edit_bindings,       'Edit widget\'s binding(s)'],
   [0],
   ['viewcode', sub{&CodePreview(&code_print)}, 'Preview generated code'],
+  ['run',      \&debug_run,           'Run generated program'],
   [0],
   ['exit',     \&abandon,             'Exit program'],
 );
@@ -485,30 +497,34 @@ $tf->packAdjust(-side=>'left');
 
 $tf->bind('<Button-3>',
   sub{ &set_selected($tf->nearest($tf->pointery-$tf->rooty)); $popup->Post($mw->pointerxy)});
-$mw->bind('<Control-o>',\&file_open);
-$mw->bind('<Control-s>',\&file_save);
-$mw->bind('<Control-n>',\&file_new);
-$mw->bind('<Control-z>',\&undo);
-$mw->bind('<Control-r>',\&redo);
-$mw->bind('<Delete>',\&edit_delete);
-$mw->bind('<Control-x>',\&edit_cut);
-$mw->bind('<Control-c>',\&edit_copy);
-$mw->bind('<Control-v>',\&edit_paste);
-$mw->bind('<F1>',[\&ShowHelp,@html_help]);
-$mw->bind("<Escape>", \&abandon);
+my %EditorBindings = 
+(
+  '<Control-o>' => \&file_open,
+  '<Control-s>' => \&file_save,
+  '<Control-n>' => \&file_new,
+  '<Control-z>' => \&undo,
+  '<Control-r>' => \&redo,
+  '<Delete>'    => \&edit_delete,
+  '<Control-x>' => \&edit_cut,
+  '<Control-c>' => \&edit_copy,
+  '<Control-v>' => \&edit_paste,
+  '<F1>'        => [\&ShowHelp,@html_help],
+  '<Escape>'    => \&abandon,
+);
+map( $mw->bind($_ => $EditorBindings{$_}), keys %EditorBindings );
 $mw->geometry('=600x500+120+1'); # initial window position
 
 $mw->protocol('WM_DELETE_WINDOW',\&abandon);
 
 $mw->SelectionOwn(-selection=>'CLIPBOARD');
+&ReadIDE_Settings();
 
 if (@ARGV) {
+  &file_clean;
   &file_read(@ARGV);
 }
 else {
-  # init project here:
-  &file_new();
-  &view_repaint; # and force repaint
+  &file_new;
 }
 &set_selected('mw');
 
@@ -524,7 +540,8 @@ sub InitProject
 {
   my $project = shift;
   my $perl = $pOpt->get('perl executable');
-  $pOpt->init( {description=>'',title=>'',fullcode=>0,strict=>0,'perl executable'=>$perl} );
+  @project_bindings=();
+  $pOpt->init( {description=>'',title=>'',%Project_defaults,'perl executable'=>$perl,bindings=>\@project_bindings,'balloon_color'=>'lightyellow','balloon_delay'=>550} );
   $project->push('Options'=>$pOpt);
 
   my $pW = vptk_w::Project::Widgets->new();
@@ -652,7 +669,7 @@ sub debug_do
 # one of debug actions - file editing
 sub debug_edit
 {
-  my $editor=$ENV{'EDITOR'} || 'vi';
+  my $editor=$IDE_settings{'text_editor'};
   my $run_str = ($os eq 'unix')?
     "$editor \$filepath &" : "$editor \$filepath";
   &debug_do($run_str,'Editing');
@@ -769,80 +786,262 @@ sub view_repaint
   $widgets{'mw'}=$w;
 }
 
+sub SetProjOptHint
+{
+  my ($text) = @_;
+  $wProjOptionsHintMsg -> configure ( -text => $text );
+}
+
+sub GetResourceFileName
+{
+  my ($read) = @_;
+  my $name = 'vptk_w.rc';
+  foreach my $p('.',$ENV{'HOME'},$path)
+  {
+    if($read)
+    {
+      return "$p/$name" if -r "$p/$name";
+    }
+    else
+    {
+      return "$p/$name" if -w "$p/$name";
+    }
+  }
+  return undef if $read;
+  return $name;
+}
+
+sub ReadIDE_Settings
+{
+  # 1. Get file name
+  # 2. Read IDE settings
+  # 3. Read project defaults
+  my $filename = &GetResourceFileName(1);
+  unless($filename)
+  {
+    &ShowDialog(-title=>'Warning:',-text=>"Failed to find configuration file - reset to defaults",-buttons=>['Continue']);
+    &ResetIDE_SettingsToDefaults;
+    &WriteIDE_Settings(%{$pOpt->data});
+    return;
+  }
+  unless(open(FILE,$filename))
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Failed to read configuration file $filename",-buttons=>['Continue']);
+    return;
+  }
+  my $section;
+  my %config;
+  while(<FILE>)
+  {
+    chomp;
+    next if /^[#;]/;
+    if(/^\[\S+\]/)
+    {
+      ($section) = /^\[(\S+)\]/;
+      $config{$section}={};
+      next;
+    }
+    if(/=/)
+    {
+      my ($key,$val) = /([^=]+)=(.*)/;
+      $config{$section}->{$key} = $val if $key;
+    }
+  }
+  close FILE; 
+  %IDE_settings = %{$config{'IDE_settings'}};
+  &SetMainPalette($mw,$IDE_settings{'bg_color'},$IDE_settings{'fg_color'});
+  $b->configure(-background=>'lightyellow',-initwait=>550);
+  $Project_defaults{'fullcode'} = $config{'project_settings'}->{'fullcode'};
+  $Project_defaults{'strict'} = $config{'project_settings'}->{'strict'};
+}
+
+sub WriteIDE_Settings
+{
+  my (%proj_opt) = @_;
+  # 1. Get file name
+  # 2. Write IDE settings
+  # 3. Write project defaults
+  my $filename = &GetResourceFileName(0);
+  unless(open(FILE,">$filename"))
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Failed to write configuration file $filename",-buttons=>['Continue']);
+    return;
+  }
+  my ($bg_color,$fg_color)=&GetMainPalette();
+  print FILE "[IDE_settings]\n";
+  foreach my $key(keys %IDE_settings)
+  {
+    print FILE "$key=$IDE_settings{$key}\n" if $key;
+  }
+  print FILE "bg_color=$bg_color\n";
+  print FILE "fg_color=$fg_color\n";
+  print FILE "[project_settings]\n";
+  print FILE "fullcode=$proj_opt{'fullcode'}\n";
+  print FILE "strict=$proj_opt{'strict'}\n";
+
+  close FILE;
+}
+
+sub ResetIDE_SettingsToDefaults
+{
+  # 1. Reset IDE settings
+  %IDE_settings = ('auto_options'=>1,'hint_msg'=>1,'text_editor'=>($ENV{'EDITOR'} || 'vi'));
+  $IDE_settings{'perldoc'} = ($os eq 'win')?
+    'start cmd /c perldoc' :
+    'xterm -e perldoc';
+  &SetMainPalette($mw,'gray90','black');
+  # 2. Reset project defaults
+  %Project_defaults = ('fullcode'=>1,'strict'=>1);
+}
+
 # show dialog box and enter project-related parameters
 sub file_properties
 {
-  my ($open_balloon) = (@_); # open dialog in Balloon notebook
+  my ($open_tab) = (@_); # open dialog in Balloon notebook
   my $db = $mw->DialogBox(-title=>'Project setup',-buttons=>['Ok','Cancel']);
-  my (@p)=(qw/-sticky we -padx 20 -pady 10 -column 0/);
+  my (@p)=(qw/-side top -fill x -padx 10 -pady 10/);
+  my %NB_NameToRaise = (
+    'balloon'   => 'wBalloonsNF',
+    'callbacks' => 'wUserCodeAfterMFrame',
+    'bind'      => 'wBindingsNF',
+    'IDE'       => 'wIDE_OptionsNF'
+    );
+  my $TabToRaise = $NB_NameToRaise{$open_tab};
+  @user_subs = grep(!/^sub\W/,@callbacks); 
+  my ($selSub)=@user_subs;
 
   # copy options
   my (%new_opt)=%{$pOpt->data};
+  my (%saved_IDE_settings)=%IDE_settings;
   my $p_user_subroutines = $Project->get('Code')->get('user code');
   my $p_code_before_main = $Project->get('Code')->get('code before main');
 
   my $wProjOptionsNB = $db -> NoteBook (  ) -> pack();
-  my $wProjGeneralFrame = $wProjOptionsNB -> add ( 'wProjGeneralFrame', -wraplength=>50, -label=>'General options', -justify=>'left' );
-
-  my $row=0;
-  $wProjGeneralFrame->LabEntry(-label=>'Program description:',-width=>45,
-    -textvariable=>\$new_opt{'description'})->grid(@p,-row=>$row++)->focus();
+  $wProjOptionsHintMsg = $db -> Message ( -aspect=>750 ) -> pack();
+  $wProjOptionsHintMsg->packForget() unless $IDE_settings{'hint_msg'};
+  my ($txtBeforeMain,$txtUserCode,$wProjDescrEntr);
+  my $wProjGeneralFrame = $wProjOptionsNB -> add ( 'wProjGeneralFrame', -wraplength=>50, -label=>'Project options', -justify=>'left', -raisecmd=>sub{
+    $wProjDescrEntr->focus();
+    &SetProjOptHint( "Hint: if you don't want to see this window when creating new project - enter 'Editor options' tab and un-check respective setting");
+    } );
+  my $wIDE_OptionsNF = $wProjOptionsNB -> add ( 'wIDE_OptionsNF', -wraplength=>50, -label=>'Editor options', -justify=>'left', -raisecmd=>sub{
+      &SetProjOptHint( "Here you can manage Editor-related options. To hide this message in all dialog boxes un-check respective setting above.");
+  });
+  $wIDE_OptionsNF->Checkbutton(-text=>"Automatically open project options window (recommended for beginner)",-anchor=>'w',-variable=>\$IDE_settings{'auto_options'})->pack(@p);
+  $wIDE_OptionsNF->Checkbutton(-text=>"Show hint message in dialog boxes (recommended for beginner)",-anchor=>'w',-variable=>\$IDE_settings{'hint_msg'})->pack(@p);
+  $wIDE_OptionsNF->LabEntry(-label=>'Text editor:',
+    -labelPack=>[-side=>'left',-anchor=>'n'],
+    -textvariable=>\$IDE_settings{'text_editor'})->pack(@p);
+  $wIDE_OptionsNF->LabEntry(-label=>'Perldoc utility:',
+    -labelPack=>[-side=>'left',-anchor=>'n'],
+    -textvariable=>\$IDE_settings{'perldoc'})->pack(@p);
+  $wIDE_OptionsNF->Button(-text=>'Coloring scheme...',-anchor=>'w',-command=>\&ColoringScheme)->pack(@p);
+  my $wButtonsFrm=$wIDE_OptionsNF->Frame()->pack(@p);
+  $wButtonsFrm->Button(-text=>'Save this setting as default',-command=>
+    sub{ &WriteIDE_Settings(%new_opt);}
+    )->pack(-side=>'left');
+  $wButtonsFrm->Button(-text=>'Restore from saved settings',-command=>
+    sub { &ReadIDE_Settings; }
+    )->pack(-side=>'left',-padx=>10);
+  $wButtonsFrm->Button(-text=>'Reset to factory settings',-command=>
+    sub { &ResetIDE_SettingsToDefaults; }
+    )->pack(-side=>'left');
+  $wProjDescrEntr=$wProjGeneralFrame->LabEntry(-label=>'Program description (inserted to code as a comment):',-width=>45,
+    -textvariable=>\$new_opt{'description'})->pack(@p);
   $wProjGeneralFrame->LabEntry(-label=>'Window title:',-width=>45,
-    -textvariable=>\$new_opt{'title'})->grid(@p,-row=>$row++);
+    -textvariable=>\$new_opt{'title'})->pack(@p);
   my $fullExeCheckbtn = $wProjGeneralFrame->Checkbutton(
-    -text=>'Generate full executable program',-anchor=>'w',
-    -variable=>\$new_opt{'fullcode'})->grid(@p,-row=>$row++);
-  $wProjGeneralFrame->Checkbutton(-text=>'Use strict output syntax',-justify=>'left',-anchor=>'w',
-    -variable=>\$new_opt{'strict'})->grid(@p,-row=>$row++);
+    -text=>'Generate full executable program (only widgets definition when unchecked)',-anchor=>'w',
+    -variable=>\$new_opt{'fullcode'})->pack(@p);
+  $wProjGeneralFrame->Checkbutton(-text=>'Use strict output syntax (see "perldoc strict" for details)',-justify=>'left',-anchor=>'w',
+    -variable=>\$new_opt{'strict'})->pack(@p);
 
-  my $wUserCodeBeforeMFrame = $wProjOptionsNB -> add ( 'wUserCodeBeforeMFrame', -wraplength=>100, -label=>'User code before main loop', -justify=>'left', -state=>'normal' );
-  $wUserCodeBeforeMFrame->Label(-justify=>'left',-text=>
-    "This code will run before GUI part of your project.\n".
+  my $wUserCodeBeforeMFrame = $wProjOptionsNB -> add ( 'wUserCodeBeforeMFrame', -wraplength=>100, -label=>'User code before main loop', -justify=>'left', -state=>'normal', -raisecmd=>sub{
+      $txtBeforeMain->focus();
+      &SetProjOptHint( "This code will run before GUI part of your project.\n".
     "Note that \$mw and all widgets will be already\n".
-    "defined at this stage, but not visible."
-    )->pack(-anchor=>'nw',-pady=>7);
-  my $txtBeforeMain=$wUserCodeBeforeMFrame->Scrolled(qw/Text -scrollbars oe -height 15 -background white/,
+    "defined at this stage, but not visible.");
+      } );
+  $txtBeforeMain=$wUserCodeBeforeMFrame->Scrolled(qw/Text -scrollbars oe -height 15 -background white/,
     -foreground=>'black'#$palette{'-foreground'}
-    )->pack();
+    )->pack(-fill=>'both',-expand=>1);
   map($txtBeforeMain->insert('end',"$_\n"),@$p_code_before_main)
     if @$p_code_before_main;
-  $txtBeforeMain->focus();
-  my $wUserCodeAfterMFrame = $wProjOptionsNB -> add ( 'wUserCodeAfterMFrame', -wraplength=>100, -label=>'User code after main loop', -justify=>'left', -state=>'normal' );
+  my $wUserCodeAfterMFrame = $wProjOptionsNB -> add ( 'wUserCodeAfterMFrame', -wraplength=>100, -label=>'User code after main loop', -justify=>'left', -state=>'normal', -raisecmd=>sub{
+      $txtUserCode->focus();
+      &SetProjOptHint("Here you can define your callbacks for GUI events.\n".
+    "All subroutines defined here will be automatically\n".
+    "inserted into callback selection listbox.");} );
 
   my $wBalloonsNF = $wProjOptionsNB -> add ( 'wBalloonsNF', -label=>'Balloons', -justify=>'left', -state=>'normal' );
-  &PopupateBalloonDialog($wBalloonsNF);
-  my $wBindingsNF = $wProjOptionsNB -> add ( 'wBindingsNF', -label=>'Bindings', -justify=>'left', -state=>'normal' );
+  $balloon_bg_color = $Project->get('Options')->get('balloon_color');
+  $balloon_delay    = $Project->get('Options')->get('balloon_delay');
+  my $wBlnEntry=&PopulateBalloonDialog($wBalloonsNF);
 
-  $wBindingsNF->Label(-text=>'To be implemented soon.')->pack(-pady=>10);
-  $wBindingsNF->Button(-text=>'Read more about Binding ...',-command=>[\&tkpod,'bind'])->pack();
-  $wUserCodeAfterMFrame->Label(-justify=>'left',-text=>
-    "Here you can define your callbacks for GUI events.\n".
-    "All subroutines defined here will be automatically inserted\n".
-    "into callback selection listbox."
-    )->pack(-anchor=>'nw',-pady=>7);
-  my $txtUserCode=$wUserCodeAfterMFrame->Scrolled(qw/Text -scrollbars oe -height 15 -background white/,
+  $wProjOptionsNB->pageconfigure('wBalloonsNF',-raisecmd=>
+     sub{
+       $wBlnEntry->focus() if ref $wBlnEntry;
+       &SetProjOptHint("Balloon is a text that appear in ".
+    "a popping 'cloud' next to the widget when ".
+    "user stops a cursor on it. ".
+    "Newlines are Ok (as \\n digraph).\n".
+    "To erase balloon just clear all text in editing box.");
+       }
+     );
+  my $wBindingsNF = $wProjOptionsNB -> add ( 'wBindingsNF', -label=>'Bindings', -justify=>'left', -state=>'normal', -raisecmd=>sub{&SetProjOptHint("The bind method associates callbacks with X events\n".
+  "You can assign more than one bind to same widget")} );
+
+  my ($selBind)=@project_bindings; # we take 1st as default
+  my $wBindLB = $wBindingsNF->Listbox(-selectmode=>'single')->
+    pack(-anchor=>'nw',-side=>'left',-fill=>'both',-expand=>1);
+  $wBindLB->insert('end'=>@project_bindings);
+  $wBindLB->bind('<<ListboxSelect>>'=>sub{$selBind=$wBindLB->get('anchor')});
+  my $wBindFrm = $wBindingsNF->Frame()->pack(-anchor=>'nw',-side=>'left',-fill=>'y');
+  $wBindFrm->LabEntry(-label=>'Bind:',-state=>'readonly',-textvariable=>\$selBind,
+    -labelPack=>[-side=>'left',-anchor=>'n'],-justify=>'left')->
+    pack(-pady=>10,-padx=>10,-fill=>'x');
+  $wBindFrm->Button(-text=>'Create ...',-command=>[\&BindCreate,\$wBindLB,\$selBind])->
+    pack(-pady=>10,-padx=>10,-fill=>'x');
+  $wBindFrm->Button(-text=>'Delete!',-command=>[\&BindDelete,\$wBindLB,\$selBind])->
+    pack(-pady=>10,-padx=>10,-fill=>'x');
+  $wBindFrm->Button(-text=>'Read more about Binding ...',-command=>[\&tkpod,'bind'])->
+    pack(-pady=>10,-padx=>10,-fill=>'x');
+#  $wBindFrm->Message(
+#    -text=>'The bind method associates callbacks with X events',
+#    -aspect=>250)->pack(-pady=>10,-padx=>10,-fill=>'x');
+  my $wUserCodeTopFrm=$wUserCodeAfterMFrame->Frame()->pack(-fill=>'x');
+  my $wSubNameEntry = $wUserCodeTopFrm->BrowseEntry(-width=>14,
+          -variable=>\$selSub,-choices=>\@user_subs)->pack(-side=>'left',-pady=>5,-fill=>'x',-expand=>1);
+  my $wButtonsFrame = $wUserCodeTopFrm->Frame()->pack(-side=>'left',-anchor=>'nw');
+  $wButtonsFrame->Button(-text=>'create',-command=>[\&UserCodeCreate,\$selSub,\$txtUserCode,$wSubNameEntry])->pack(-side=>'left',-padx=>5);
+  $wButtonsFrame->Button(-text=>'change',-command=>[\&UserCodeChange,\$selSub,\$txtUserCode])
+    ->pack(-side=>'left',-padx=>5);
+  $wButtonsFrame->Button(-text=>'delete',-command=>[\&UserCodeDelete,\$selSub,\$txtUserCode,$wSubNameEntry])->pack(-side=>'left',-padx=>5);
+  $wButtonsFrame->Button(-text=>'help...',-command=>[\&tkpod,'callbacks'])->pack(-side=>'left',-padx=>5);
+  $txtUserCode=$wUserCodeAfterMFrame->Scrolled(qw/Text -scrollbars oe -height 15 -background white/,
     -foreground=>'black'#$palette{'-foreground'}
-    )->pack();
+    )->pack(-fill=>'both',-expand=>1);
   my $signature=(@$p_user_subroutines) ?
     shift(@$p_user_subroutines) : '#===vptk end===< DO NOT CODE ABOVE THIS LINE >===';
   map($txtUserCode->insert('end',"$_\n"),@$p_user_subroutines);
-  $txtUserCode->focus();
   $db->bind('<Key-Return>',undef);
-  $wProjOptionsNB->raise('wBalloonsNF') if $open_balloon;
+  $wProjOptionsNB->raise($TabToRaise) if $TabToRaise;
   $db->resizable(1,0);
-  &Coloring($db); #$db->RecolorTree($Palette);
+  &Coloring($db);
   # show dialog
   my $reply=$db->Show();
-
   (@$p_user_subroutines)=($signature,@$p_user_subroutines);
   if ($reply eq 'Cancel')
   {
     &undo;
+    %IDE_settings = %saved_IDE_settings;
     return;
   }
 
   # apply new options
   %{$pOpt->data} = %new_opt;
+  $Project->get('Options')->set('balloon_color',$balloon_bg_color);
+  $Project->get('Options')->set('balloon_delay',$balloon_delay);
 
   if($pOpt->get('fullcode')) {
     (@$p_user_subroutines)=($signature,split("\n",$txtUserCode->get('0.0','end')));
@@ -858,42 +1057,211 @@ sub file_properties
   &changes(1); # can't store undo info so far!
 }
 
-sub EditCodeBeforeMain
+sub UserCodeDelete
 {
-  my $db = $mw->DialogBox(-title => "Edit code before main loop",-buttons=>['Ok','Cancel']);
-  my $txt = $db->Scrolled('Text',-scrollbars=>'osoe')->pack(-side=>'left');
-  map($txt->insert('end',"$_\n"),@{$Project->get('Code')->get('code before main')});
-  $db->bind('<Key-Return>',undef);
-  $db->Label(-justify=>'left',-text=>
-    "This code will run\nbefore GUI part of\nyour project.\n".
-    "\nNote that \$mw\nand all widgets\nwill be already\n".
-    "defined at this\nstage, but not\nvisible."
-    )->pack(-side=>'left',-anchor=>'nw',-pady=>20);
-  # show dialog
+  my ($selSub,$txtUserCode,$wSubNameEntry)=@_;
+
+  my $id = $$selSub;
+  $id =~ s/^\\&//;
+
+  unless ($id)
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine name empty or illegal!\n",-buttons=>['Continue']);
+    return;
+  }
+  my $arg = $id;
+  $arg="\\\&$arg" if $arg=~/^\w/ && $arg!~/^(sub[\s\{]|\[)/;
+  unless (grep($arg eq $_, @user_subs))
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine '$id' not found!\n",-buttons=>['Continue']);
+    return;
+  }
+  # find definition in text
+  $$txtUserCode->SetCursor("0.0");
+  $$txtUserCode->FindNext(-forward,-regexp,-nocase,"^sub $id(\$|\\W)");
+  if($$txtUserCode->GetTextTaggedWith("sel"))
+  {
+    # remove it in text
+    $$txtUserCode->delete("sel.first","sel.last+1 chars");
+    # remove it's name from callbacks
+    @callbacks = grep($arg ne $_, @callbacks);
+    @user_subs = grep(!/^sub\W/,@callbacks); 
+    # update listbox
+    $wSubNameEntry->configure(-choices=>\@user_subs);
+    $wSubNameEntry->focus();
+  }
+  else
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine '$id' definition not found!\n",-buttons=>['Continue']);
+  }
+}
+
+sub BindDelete
+{
+  my ($pLB,$pLE) = @_;
+  my $selected = ${$pLB}->get('active');
+  # remove from array selected element
+  @project_bindings = grep($_ ne $selected, @project_bindings);
+  # update listbox
+  ${$pLB}->delete(0,'end');
+  ${$pLB}->insert('end'=>@project_bindings);
+  # update lab-entry
+  (${$pLE})=@project_bindings; # we take 1st as default
+}
+
+sub PopulateBindDialog
+{
+  my ($db,$bindSelWidget,$bindSelEvent,$bindSelCallb) = @_;
+  my @modifiers = qw/Control Shift Lock Button1 1 Button2 2 Button3 3 Button4 4 Button5 5
+    Mod1 M1 Mod2 M2 Mod3 M3 Mod4 M4 Mod5 M5 Alt Double Triple Quadruple/;
+  my @event_types = qw/ Activate Destroy Map ButtonPress Button Enter MapRequest
+    ButtonRelease Expose Motion Circulate FocusIn MouseWheel CirculateRequest FocusOut Property
+    Colormap Gravity Reparent Configure KeyPress Key ResizeRequest
+    ConfigureRequest KeyRelease Unmap Create Leave Visibility Deactivate/;
+  unshift(@modifiers,'');
+  unshift(@event_types,'');
+  my ($bindM1, $bindM2, $bindT);
+  my ($event_detail);
+
+  my $wBindTopFr = $db -> Frame ( -relief=>'flat' ) -> pack(-anchor=>'nw', -pady=>10, -fill=>'x', -padx=>10);
+  my $wBindWidgL = $wBindTopFr -> Label ( -justify=>'left', -textvariable=>$bindSelWidget ) -> pack(-anchor=>'nw', -side=>'left');
+  $wBindTopFr -> Label ( -justify=>'left', -text=>"-> bind('" ) -> pack(-anchor=>'nw', -side=>'left');
+  my $wBindEvntL = $wBindTopFr -> Label ( -justify=>'left', -textvariable=>\$bindSelEvent ) -> pack(-anchor=>'nw', -side=>'left');
+  $wBindTopFr -> Label ( -justify=>'left', -text=>"' =>" ) -> pack(-anchor=>'nw', -side=>'left');
+  my $wBindCallbL = $wBindTopFr -> Label ( -justify=>'left', -relief=>'flat', -textvariable=>$bindSelCallb ) -> pack(-anchor=>'nw', -side=>'left');
+  $wBindTopFr -> Label ( -justify=>'left', -text=>");" ) -> pack(-anchor=>'nw', -side=>'left');
+  my $wBindDlgNB = $db -> NoteBook (  ) -> pack(-fill=>'both',-expand=>1);
+  my $wBindW_NBF = $wBindDlgNB -> add ( 'wBindW_NBF', -label=>'Widget', -justify=>'left', -state=>'normal' );
+  my $wBindW_LB = $wBindW_NBF -> Scrolled ( 'HList', -scrollbars=>'osoe' ) -> pack(-pady=>8, -fill=>'both', -padx=>8);
+  $wBindW_LB->bind('<Button-1>'=>sub{$$bindSelWidget=$wBindW_LB->info('data',$wBindW_LB->infoSelection)});
+  map($wBindW_LB->add($_,-text=>(/([^\.]+)$/),-data=>(/([^\.]+)$/))=>@tree);
+  my $browsecmd = [\&update_event_var,$bindSelEvent,\$event_detail,\$bindM1,\$bindM2,\$bindT];
+  my $wBindE_NBF = $wBindDlgNB -> add ( 'wBindE_NBF', -label=>'Event', -justify=>'left', -state=>'normal' );
+  my $wBindEv1_BE = $wBindE_NBF -> BrowseEntry ( -variable=>\$bindM1, -state=>'readonly', -label=>'Modifier1:', -justify=>'left', -labelPack=>[-side=>'left',-anchor=>'n'], -choices=>\@modifiers, -browsecmd=>$browsecmd ) -> pack(-anchor=>'nw', -fill=>'x', -padx=>8);
+  my $wBindEv2_BE = $wBindE_NBF -> BrowseEntry ( -variable=>\$bindM2, -state=>'readonly', -label=>'Modifier2:', -justify=>'left', -labelPack=>[-side=>'left',-anchor=>'n'], -choices=>\@modifiers, -browsecmd=>$browsecmd ) -> pack(-anchor=>'nw', -fill=>'x', -padx=>8);
+  my $wBindEv3_BE = $wBindE_NBF -> BrowseEntry ( -variable=>\$bindT, -state=>'readonly', -label=>'Type:', -justify=>'left', -labelPack=>[-side=>'left',-anchor=>'n'], -choices=>\@event_types, -browsecmd=>$browsecmd ) -> pack(-anchor=>'nw', -fill=>'x', -padx=>8);
+  my $wBindEv4_BE = $wBindE_NBF -> LabEntry ( -label=>'Detail:', -justify=>'left', -labelPack=>[-side=>'left',-anchor=>'n'], -textvariable=>\$event_detail, -validatecommand=>$browsecmd, -validate=>'all' ) -> pack(-anchor=>'nw', -fill=>'x', -padx=>8, -pady=>18 );
+  my $wBindC_NBF = $wBindDlgNB -> add ( 'wBindC_NBF', -label=>'Callback', -justify=>'left', -state=>'normal' );
+  my $wBindCallb_BE = $wBindC_NBF -> BrowseEntry ( -label=>'Function:', -justify=>'left', -labelPack=>[-side=>'left',-anchor=>'n'], -relief=>'sunken', -variable=>$bindSelCallb, -state=>'normal' ) -> pack(-fill=>'x',-expand=>0);
+  # update listbox content respectively
+  $wBindCallb_BE->configure(-choices=>\@callbacks);
+  return ($wBindW_LB);
+
+}
+
+sub update_event_var
+{
+  my ($bindSelEvent,$event_detail,$bindM1,$bindM2,$bindT,$ev_d)=@_;
+  $ev_d = $$event_detail if scalar(@_)<=7 || ref $ev_d;
+  $$bindSelEvent = '<'.join('-', $$bindM1, $$bindM2, $$bindT, $ev_d).'>';
+  $$bindSelEvent =~ s/-+/-/g;
+  $$bindSelEvent =~ s/^<-/</;
+  $$bindSelEvent =~ s/->$/>/;
+  1;
+}
+
+sub BindCreate
+{
+  my ($pLB,$pLE) = @_;
+  my $new_bind = "'test'=>'<123>'=>\\&kuku";
+  # open dialog box and ask for 3 bind components
+  my $db = $mw->DialogBox(-title=>'Bind setup',-buttons=>['Ok','Cancel']);
+  my ($bindSelCallb,$bindSelEvent,$bindSelWidget);
+
+  &PopulateBindDialog($db,\$bindSelWidget,\$bindSelEvent,\$bindSelCallb);
   $db->resizable(1,0);
   &Coloring($db);
+  # show dialog
   my $reply=$db->Show();
   return if $reply eq 'Cancel';
-  # put text content as user code
-  (@{$Project->get('Code')->get('code before main')})=split("\n",$txt->get('0.0','end'));
+  # on 'Ok' - check that the same is not exist
+  # insert new bind into array
+  $bindSelWidget =~ s/^.*\.//;
+  $new_bind = $bindSelWidget."->bind('$bindSelEvent',$bindSelCallb);";
+  &PushCallback($bindSelCallb);
+  push(@project_bindings,$new_bind);
+  # update listbox
+  ${$pLB}->delete(0,'end');
+  ${$pLB}->insert('end'=>@project_bindings);
+  # update lab-entry
+  (${$pLE})=@project_bindings; # we take 1st as default
+}
+
+sub UserCodeCreate
+{
+  my ($selSub,$txtUserCode,$wSubNameEntry)=@_;
+
+  my $id = $$selSub;
+  $id =~ s/^\\&//;
+
+  unless ($id)
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine name empty or illegal!\n",-buttons=>['Continue']);
+    return;
+  }
+  # check, do we have such sub id?
+  # if not - create template in txt-widget
+  if(&PushCallback($id))
+  {
+    $$txtUserCode->insert('end',"\nsub $id\n{\n\n}\n");
+    @user_subs = grep(!/^sub\W/,@callbacks); 
+    # update listbox content respectively
+    $wSubNameEntry->configure(-choices=>\@user_subs);
+  }
+  else
+  {
+    # say that such sub already defined
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine '$id' already defined!\n",-buttons=>['Continue']);
+  }
+}
+
+# User code routine focus for changes
+sub UserCodeChange
+{
+  my ($selSub,$txtUserCode)=@_;
+  my $id = $$selSub;
+  $id =~ s/^\\&//;
+
+  unless ($id)
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine name empty or illegal!\n",-buttons=>['Continue']);
+    return;
+  }
+  # find routine index in code and place cursor there
+  $$txtUserCode->SetCursor("0.0");
+  $$txtUserCode->FindNext(-forward,-regexp,-nocase,"^sub $id(\$|\\W)");
+  if($$txtUserCode->GetTextTaggedWith("sel"))
+  {
+    $$txtUserCode->SetCursor("sel.last");
+    $$txtUserCode->focus();
+  }
+  else
+  {
+    &ShowDialog(-title=>'Error:',-text=>"Subroutine '$id' not found!\n",-buttons=>['Continue']);
+  }
 }
 
 # Action: clean all project
+sub file_clean
+{
+  &struct_new;
+  @callbacks=();
+  &changes(0);
+  @redo=(); @undo=(); # clear undo/redo stacks
+  $selected='mw';
+  &InitProject($Project);
+  &view_repaint; # force repaint!
+}
+
 sub file_new
 {
   # check for save status here!
 
   return unless &check_changes;
 
-  &struct_new;
-  &changes(0);
-  &view_repaint; # force repaint!
-  @redo=(); @undo=(); # clear undo/redo stacks
-#  @user_subroutines=();
-#  @user_code_before_main=();
-#  (%file_opt)=(description=>'',title=>'',fullcode=>0,strict=>0);
-  $selected='mw';
-  &InitProject($Project);
+  &file_clean;
+  $lastfile='';
+  &file_properties if $IDE_settings{'auto_options'};
 }
 
 # Cleaning internal project structures defining widgets set
@@ -915,7 +1283,6 @@ sub struct_new
   }
   %widgets=();
   @user_auto_vars=();
-  @callbacks=();
 }
 
 # make widget passed as argument "selected"
@@ -928,6 +1295,8 @@ sub set_selected
   $tf->anchorClear(); $tf->selectionClear();
   $tf->anchorSet($selected); $tf->selectionSet($selected);
   return unless $view_blink; # return here if no blink
+  return if $selected eq 'mw';
+  return unless exists $descriptor{&path_to_id($selected)};
   return unless &HaveGeometry($descriptor{&path_to_id($selected)}->{'type'});
   my $sw=$widgets{$selected};
   my $saved=$sw->cget(-background);
@@ -1125,7 +1494,7 @@ sub file_save
 # "Open file" dialog box and load file if success
 sub file_open
 {
-  &file_new();
+  return unless &check_changes;
 
   $mw->Busy;
   # open file save dialog box
@@ -1146,6 +1515,7 @@ sub file_open
   $mw->Unbusy;
   # return 'Cancel' if file not selected
   return 'Cancel' unless($file);
+  &file_clean;
   &file_read($file);
 }
 
@@ -1163,11 +1533,9 @@ sub file_read
     &ShowDialog(-title=>'Error:',-text=>"File $file read - $!\n",-buttons=>['Continue']);
     return 'Cancel';
   }
-  # else
-  &file_new();
   &struct_read(<DATA>);
-  &view_repaint;
   close DATA;
+  &view_repaint;
 }
 
 # Clipboard operations implementation
@@ -1310,14 +1678,47 @@ sub edit_paste
   &set_selected($selected);
 }
 
+# check are any of erased widgets listed in 'bind array'
+# if any - warn and update array
+sub check_bind_before_delete
+{
+  my @widgets_todelete = grep(/$selected/,@tree);
+  map(s/.*\.//,@widgets_todelete);
+  my @bind_todelete;
+  foreach my $w (@widgets_todelete)
+  {
+    push(@bind_todelete,grep(/^$w.>bind\(/,@project_bindings));
+  }
+  if(@bind_todelete)
+  {
+     my $reply = ShowDialog(-title=>'Error',
+       -text=>"There are some bindings connected to selected widget(s)",
+       -buttons=>['Ok','Dismiss']);
+     if($reply eq 'Ok')
+     {
+       foreach my $b(@bind_todelete)
+       {
+         @project_bindings = grep($_ ne $b,@project_bindings);
+       }
+     }
+     else
+     {
+        return 0;
+     }
+  }
+  return 1;
+}
+
 sub edit_delete
 {
+  return unless &check_bind_before_delete();
   if ($selected eq 'mw') # say something to user here:
   {
 #    &ShowDialog(-title=>'Error',-text=>'Use File->New in order to clear all');
-    &file_new();
+    &file_new;
     return;
   }
+
   # save current state for undo
   &undo_save();
   # 1. remove internal structures (including sub-widgets)
@@ -1490,8 +1891,9 @@ sub rename
   map (s/\$($old_id)(\W)/\$$id$2/g,@program);
   &struct_new();
   &struct_read(@program);
-  # &view_repaint;
+  &view_repaint;
   &changes(1);
+  $selected=$id;
 }
 
 sub ask_new_id
@@ -1526,7 +1928,7 @@ sub generate_unique_id
   return $id;
 }
 
-sub PopupateBalloonDialog
+sub PopulateBalloonDialog
 {
   my ($wBlDialog) = @_;
   my $tPromptMessage;
@@ -1536,8 +1938,8 @@ sub PopupateBalloonDialog
   my $selected_widget_for_balloon = $selected;
   $selected_widget_for_balloon = $list[0] if $selected eq 'mw'; 
   my $id=$selected_widget_for_balloon; $id=~s/.*\.//;
-  $selected_widget_for_balloon = $list[0] if !$id || 
-    !&HaveGeometry($descriptor{$id}->{'type'});
+  $selected_widget_for_balloon = $list[0] if !$id ||
+    ($id && !&HaveGeometry($descriptor{$id}->{'type'}));
   $id=$selected_widget_for_balloon; $id=~s/.*\.//;
   if ( $id eq 'mw' || !$selected_widget_for_balloon || 
   # replace with exact "can have balloon" flag - TBD
@@ -1564,24 +1966,23 @@ sub PopupateBalloonDialog
       });
 # Save undo information:
   &undo_save();
-  my $rf=$wBlDialog->Frame()->pack(-side=>'left',-padx=>5,-pady=>5);
+  my $rf=$wBlDialog->Frame()->pack(-side=>'left',-padx=>5,-pady=>5,-anchor=>'nw');
   $rf->Label(-textvariable=>\$tPromptMessage,-justify=>'left')->pack(-pady=>10);
-  my $wBlnEntry=$rf->Entry(-textvariable=>\$new_balloon)->pack(-pady=>5,-fill=>'x')->focus();
+  my $wBlnEntry=$rf->Entry(-textvariable=>\$new_balloon)->pack(-pady=>5,-fill=>'x');
   $rf->bind('<Leave>'=>sub{$d->{'wballoon'} = $new_balloon;});
-  $rf->Label(-text=>"Balloon is a textbox that appear in\n".
-    "a popping 'cloud' next to the widget when\n".
-    "user stops a cursor on it.\n\n".
-    "Newlines are Ok (as \\n digraph).\n\n".
-    "To erase balloon just clear all text in editing box.",
-    -justify=>'left')->pack(-pady=>10);
-  $rf->Button(-text=>'Read more about Balloons ...',-command=>[\&tkpod,'Balloon'])->pack();
+  $rf->Button(-text=>'Read more about Balloons ...',-command=>[\&tkpod,'Balloon'])->pack(-pady=>7);
+  my $wBalloonGeneralFrm = $rf->Frame()->pack(-fill=>'x',-pady=>7);
+  $wBalloonGeneralFrm->Label(-text=>'Delay: ')->pack(-side=>'left');
+  &NumEntry($wBalloonGeneralFrm,-textvariable=>\$balloon_delay,
+      -width=>4,-minvalue=>0)->pack(-side=>'left');
+  &ColorPicker($wBalloonGeneralFrm,'Balloon background',\$balloon_bg_color);
+  return $wBlnEntry;
 }
 
 # Edit selected widget's balloon
-sub edit_balloon
-{
-  &file_properties(1);
-}
+sub edit_balloon { &file_properties('balloon'); }
+
+sub edit_bindings { &file_properties('bind'); }
 
 # open dialog for widget's properties editing
 sub edit_properties
@@ -1607,10 +2008,11 @@ re_enter:
   my $fbl=$db->LabFrame(-labelside=>'acrosstop',-label=>'Help')
     ->pack(-side=>'bottom',-anchor=>'s',-pady=>5);
   my $bl=$fbl->Label(-height=>6,-width=>80,-justify=>'left')->pack();
-  
+  $fbl->packForget unless $IDE_settings{'hint_msg'};
+
   my %val;
   my (%lpack)=();
-  
+  my @user_vars_for_edit = map("\\\$$_",@user_auto_vars);
   if (keys %$pr)
   {
     my $db_lf=$db->LabFrame(-labelside=>'acrosstop',-label=>"Widget ".$d->{'type'}." options:")
@@ -1641,6 +2043,11 @@ re_enter:
       {
 	&NumEntry($f,-textvariable=>\$val{$k},
           -width=>4,-minvalue=>0)->pack(@right_pack);
+      }
+      elsif($pr->{$k} eq 'variable')
+      {
+        # add list of choises
+        $f->BrowseEntry(-variable=>\$val{$k},-choices=>\@user_vars_for_edit)->pack(@right_pack);
       }
       elsif($pr->{$k} eq 'text')
       {
@@ -1858,7 +2265,7 @@ re_enter:
   # bind baloon message + help on click
   $bl->bind('<Enter>',
     sub{$bl->configure(-text=>"Click here to get help about current widget\n".
-      "by TkPOD utility.\n\n".
+      "by perldoc utility.\n\n".
       ($n?"Right-click here for current geometry manager help":''))});
   $bl->bind('<Leave>',
     sub{$bl->configure(-text=>'')});
@@ -1930,6 +2337,13 @@ re_enter:
       {
         &PushCallback($val{$k});
       }
+      if($pr->{$k}=~/variable/)
+      {
+        # store user-defined variable in array
+        my ($user_var)=($val{$k}=~/\\\$(\w+)/);
+        push(@user_auto_vars,$user_var)
+          if $user_var && ! grep($_ eq $user_var,@user_auto_vars);
+      }
     }
     $d->{'opt'}=join(', ',%val);
   }
@@ -1967,13 +2381,18 @@ re_enter:
 sub PushCallback
 {
   my (@arg)=@_;
+  my $count = 0;
   foreach my $arg (@arg)
   {
     next unless $arg;
     $arg="\\\&$arg" if $arg=~/^\w/ && $arg!~/^(sub[\s\{]|\[)/;
-    push(@callbacks,$arg)
-      unless grep($arg eq $_, @callbacks);
+    unless (grep($arg eq $_, @callbacks))
+    {
+      push(@callbacks,$arg);
+      $count++;
+    }
   }
+  return $count;
 }
 
 # display POD help window (paltform-dependent)
@@ -1991,9 +2410,7 @@ sub tkpod
   $widget = 'MainWindow' if $id eq 'mw';
   $widget = "Tk::$widget" unless $widget =~ /^Tk::/;
   $mw->Busy;
-  my $pod_util = ($os eq 'win')?
-    'start cmd /c perldoc' :
-    'xterm -e perldoc';
+  my $pod_util = $IDE_settings{'perldoc'};
   system("$pod_util $widget &");
   $mw->Unbusy;
 }
@@ -2246,6 +2663,23 @@ sub struct_read
       $user_code_before_main=1;
       next;
     }
+    if($line=~/mw->Balloon\(/)
+    {
+      my ($args) = $line =~ /\((.*)\)/;
+      my (%settings) = split(/,|=>/,$args);
+      $settings{'-background'} =~ s/"//g;
+      $Project->get('Options')->set('balloon_color',$settings{'-background'});
+      $Project->get('Options')->set('balloon_delay',$settings{'-initwait'});
+      next;
+    }
+    if($line=~/->bind\(/)
+    {
+      my ($bindSelCallb) = ($line=~/'[^']+',(.*)\);$/);
+      $line =~ s/^\$//;
+      push(@project_bindings,$line);
+      &PushCallback($bindSelCallb);
+      next;
+    }
     if($line=~/^\s*#[^!]/)
     {
       $line =~ s/^\s*#\s*//;
@@ -2390,7 +2824,7 @@ sub callback
   my $reply=&ShowDialog(-bitmap=>'info',-title=>'Callback triggered:',
     -text=> "This action triggered callback function <$_[0]>",
     -buttons=>['Close','Edit callbacks','Widget properties','Help']);
-  &file_properties if($reply eq 'Edit callbacks');
+  &file_properties('callbacks') if($reply eq 'Edit callbacks');
   &edit_properties if($reply eq 'Widget properties');
   &tkpod('callbacks') if($reply eq 'Help');
 }

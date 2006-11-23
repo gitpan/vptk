@@ -12,8 +12,8 @@ sub EditorProperties {
   return {
     -background=>'color',-foreground=>'color',-width=>'int+',
     -justify=>'justify',-padx=>'int+',-pady=>'int+',-value=>'text',-command=>'callback',
-    -relief=>'relief',-text=>'text',-underline=>'int+',-variable=>'text',
-    -anchor=>'anchor',-textvariable=>'text',-command=>'callback',-selectcolor=>'color',
+    -relief=>'relief',-text=>'text',-underline=>'int+',-variable=>'variable',
+    -anchor=>'anchor',-textvariable=>'variable',-command=>'callback',-selectcolor=>'color',
     -indicatoron=>'menu(0|1)',-state=>'menu(normal|active|disabled)'
   }
 }

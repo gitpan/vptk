@@ -12,7 +12,7 @@ sub EditorProperties {
   return {
     -background=>'color',-foreground=>'color',-width=>'int+',-onvalue=>'text',
     -justify=>'justify',-padx=>'int+',-pady=>'int+',-offvalue=>'text',-command=>'callback',
-    -relief=>'relief',-text=>'text',-underline=>'int+',-variable=>'text',
+    -relief=>'relief',-text=>'text',-underline=>'int+',-variable=>'variable',
     -anchor=>'anchor',-indicatoron=>'menu(0|1)',-selectcolor=>'color',
     -state=>'menu(normal|active|disabled)'
   }

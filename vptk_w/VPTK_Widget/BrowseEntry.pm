@@ -11,7 +11,7 @@ sub AssociatedIcon{ 'browseentry' }
 sub EditorProperties {
   return {
     -background=>'color',-foreground=>'color',-borderwidth=>'int+',
-    -width=>'int+',-justify=>'justify',-labelPack=>'lpack',-variable=>'text',
+    -width=>'int+',-justify=>'justify',-labelPack=>'lpack',-variable=>'variable',
     -relief=>'relief',-label=>'text',-padx=>'int+',-pady=>'int+',-width=>'int+',
     -listwidth=>'int+',-state=>'menu(normal|readonly|disabled)'
   }
@@ -21,6 +21,7 @@ sub JustDraw {
   my ($this,$parent,@args) = @_;
   my (%args)=@args;
   my $lpack= delete $args{'-labelPack'};
+  delete $args{'-variable'};
   $lpack=~s/[\[\]']//g;
   return $parent->BrowseEntry(%args,
     -choices=>[qw/one two three/],

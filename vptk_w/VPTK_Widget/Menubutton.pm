@@ -13,7 +13,7 @@ sub EditorProperties {
     -background=>'color',-foreground=>'color',-width=>'int+',
     -justify=>'justify',-padx=>'int+',-pady=>'int+',-borderwidth=>'int+',
     -relief=>'relief',-text=>'text',-underline=>'int+',-anchor=>'anchor',
-    -state=>'menu(normal|active|disabled)',-textvariable=>'text'
+    -state=>'menu(normal|active|disabled)',-textvariable=>'variable'
   }
 }
 

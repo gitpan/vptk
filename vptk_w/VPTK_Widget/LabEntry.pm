@@ -12,8 +12,8 @@ sub EditorProperties {
   return {
     -background=>'color',-foreground=>'color',-borderwidth=>'int+',
     -width=>'int+',-justify=>'justify',-labelPack=>'lpack',
-    -textvariable=>'text',-relief=>'relief',-label=>'text',-padx=>'int+',
-    -pady=>'int+',-width=>'int+',-state=>'menu(normal|disabled)'
+    -textvariable=>'variable',-relief=>'relief',-label=>'text',-padx=>'int+',
+    -pady=>'int+',-width=>'int+',-state=>'menu(normal|disabled|readonly)'
   }
 }
 
@@ -21,6 +21,7 @@ sub JustDraw {
   my ($this,$parent,@args) = @_;
   my (%args)=@args;
   my $lpack= delete $args{'-labelPack'};
+  delete $args{'-textvariable'};
   $lpack=~s/[\[\]']//g;
   return $parent->LabEntry(%args,-labelPack=>[split(/\s*(?:,|=>)\s*/,$lpack)]);
 }

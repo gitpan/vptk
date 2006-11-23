@@ -1,8 +1,18 @@
-VPTK_W Revision 2.16
+VPTK_W Revision 2.24
 
-- Implemented Object-Oriented code output
-- Project properties displayed in "notebook" style
-- Auto-focus on input fields in project options window
-- Added "balloons" (widget tooltips) support
-- Extended properties set for "Label" widget (incl. bitmap)
-- Fixed minor bug in "Ctrl/S" binding in main window
+- File->New open properties dialog box
+- Callbacks tab in project properties opened in callback context
+- User callbacks filtered (anonimous subs removed from listbox)
+- Real auto-focus for all project properties tabs
+- Implemented user subroutines actions: select/new/delete
+- New type of widget property: variable (in widget properties dialog)
+- Fixed bug in default file name handling
+- Fixed "dirty" bit check order in "open file"
+- Added "readonly" for LabEntry '-state'
+- Fixed bugs in "entry"-type widgets: associated variable display
+- "Bindings" support implemented
+- "Run" button added to toolbar
+- Bug fixed in "blink selected" procedure
+- Editor options tab
+- Editor settings save/restore/reset
+- Balloon parameters editing

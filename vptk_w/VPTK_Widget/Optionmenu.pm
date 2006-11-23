@@ -10,7 +10,7 @@ sub PrintTitle    { 'Optionmenu' }
 sub AssociatedIcon{ 'optionmenu' }
 sub EditorProperties {
   return {
-    -variable=>'text',-command=>'callback'
+    -variable=>'variable',-command=>'callback'
   }
 }
 

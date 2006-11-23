@@ -14,7 +14,7 @@ sub EditorProperties {
     -borderwidth=>'int+',-bigincrement=>'int+',-digits=>'int+',-from=>'float',
     '-length'=>'int+',-resolution=>'float',-orient => 'menu(vertical|horizontal)',
     -sliderlength=>'int+',-to=>'float',-width=>'int+',-showvalue=>'menu(1|0)',
-    -variable=>'text',-state=>'menu(normal|active|disabled)',-command=>'callback',
+    -variable=>'variable',-state=>'menu(normal|active|disabled)',-command=>'callback',
     -tickinterval=>'int+',-troughcolor=>'color'
   }
 }

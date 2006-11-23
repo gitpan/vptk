@@ -48,16 +48,19 @@ sub print {
   @user_auto_vars=();
   foreach my $element($this->elements)
   {
+    my $balloon_color=$parent->get('Options')->get('balloon_color') || 'lightyellow';
+    my $balloon_delay=$parent->get('Options')->get('balloon_delay') || 550;
     my ($user_var)=($element->{'opt'}=~/variable[^\$]+\\\$(\w+)/);
     push(@user_auto_vars,$user_var) 
       if $user_var && ! grep($_ eq $user_var,@user_auto_vars);
-    $wballoon = "use Tk::Balloon;\n${strict}\$vptk_balloon=\$mw->Balloon();"
+    $wballoon = "use Tk::Balloon;\n${strict}\$vptk_balloon=\$mw->Balloon(-background=>\"$balloon_color\",-initwait=>$balloon_delay);"
   }
 
   push(@result,$wballoon) if $wballoon;
   push(@result, "use vars qw/\$".join(' $',@user_auto_vars)."/;\n") if @user_auto_vars;
   push(@result, &::code_print());
   push(@result, "");
+  push(@result, map("\$$_",@{$parent->get('Options')->get('bindings')}));
   if($parent->get('Options')->get('fullcode')) {
     $user_code_before_main = $parent->get('Code')->get('code before main');
     if(@$user_code_before_main) {
